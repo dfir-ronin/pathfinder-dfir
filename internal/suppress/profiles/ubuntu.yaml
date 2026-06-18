@@ -1,0 +1,219 @@
+suppress:
+  # persist: additional systemd unit aliases
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "snap."
+    reason: "snap.* units are created by snapd for installed snaps"
+
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "chronyd.service"
+
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "cloud-init-network.service"
+
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "syslog.service"
+
+  # persist: snap udev rules
+  - module: persistence
+    rule_id: "Suspicious udev rule"
+    message_contains: "snap-device-helper"
+    reason: "snapd-generated udev rules for snap package device access"
+
+  # persist: systemd generator
+  - module: persistence
+    rule_id: "Non-standard systemd generator"
+    message_contains: "systemd-gpt-auto-generator"
+    reason: "Standard systemd generator for GPT partition auto-mounting"
+
+  # persist: eval in locale fix script
+  - module: persistence
+    rule_id: "Suspicious MotD/profile script command"
+    path_in: [/etc/profile.d/01-locale-fix.sh]
+    reason: "Ubuntu stock locale fix script — eval used for locale variable expansion"
+
+  # deepscan: Ubuntu-specific false positive files
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in:
+      - /etc/alternatives/cpp
+      - /etc/alternatives/www-browser
+    reason: "Alternatives symlinks — binary/man-page content triggers false positives (netcat help, CGI env vars)"
+
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_glob: "/etc/apparmor.d/**"
+    reason: "AppArmor profiles legitimately reference /dev/shm for IPC policy"
+
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in: [/etc/dictionaries-common/words]
+    reason: "System dictionary contains all English words including rootkit names"
+
+  # bodyfile: snap Firefox volatile paths
+  - module: bodyfile
+    rule_id: "Recent activity in volatile/hidden path"
+    path_glob: "/home/*/snap/firefox/**"
+    reason: "Firefox snap profile directory — standard browser data location"
+
+  # bodyfile: FHS violations — Ubuntu-specific files (specific only, CTI-reviewed)
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_in:
+      # cron dirs (T1053.003 risk — specific files only)
+      - /etc/cron.daily/0anacron
+      - /etc/cron.daily/apport
+      - /etc/cron.daily/apt-compat
+      - /etc/cron.daily/dpkg
+      - /etc/cron.daily/logrotate
+      - /etc/cron.daily/man-db
+      - /etc/cron.monthly/0anacron
+      - /etc/cron.weekly/0anacron
+      - /etc/cron.weekly/man-db
+      - /etc/cron.yearly/0anacron
+      # update-motd.d (reverse shell risk — specific files only)
+      - /etc/update-motd.d/00-header
+      - /etc/update-motd.d/10-help-text
+      - /etc/update-motd.d/10-uname
+      - /etc/update-motd.d/50-motd-news
+      - /etc/update-motd.d/85-fwupd
+      - /etc/update-motd.d/90-updates-available
+      - /etc/update-motd.d/91-contract-ua-esm-status
+      - /etc/update-motd.d/91-release-upgrade
+      - /etc/update-motd.d/92-unattended-upgrades
+      - /etc/update-motd.d/95-hwe-eol
+      - /etc/update-motd.d/98-fsck-at-reboot
+      - /etc/update-motd.d/98-reboot-required
+      # profile.d (TeamTNT risk — specific files only)
+      - /etc/profile.d/Z99-cloud-locale-test.sh
+      - /etc/profile.d/Z99-cloudinit-warnings.sh
+      # init.d (T1037.004 risk — specific files only)
+      - /etc/init.d/alsa-utils
+      - /etc/init.d/anacron
+      - /etc/init.d/apparmor
+      - /etc/init.d/apport
+      - /etc/init.d/bluetooth
+      - /etc/init.d/chrony
+      - /etc/init.d/console-setup.sh
+      - /etc/init.d/cron
+      - /etc/init.d/cups
+      - /etc/init.d/dbus
+      - /etc/init.d/gdm3
+      - /etc/init.d/kdump-tools
+      - /etc/init.d/keyboard-setup.sh
+      - /etc/init.d/openvpn
+      - /etc/init.d/plymouth
+      - /etc/init.d/plymouth-log
+      - /etc/init.d/procps
+      - /etc/init.d/rsync
+      - /etc/init.d/saned
+      - /etc/init.d/screen-cleanup
+      - /etc/init.d/speech-dispatcher
+      - /etc/init.d/spice-vdagent
+      - /etc/init.d/sssd
+      - /etc/init.d/ufw
+      - /etc/init.d/unattended-upgrades
+      - /etc/init.d/uuidd
+      - /etc/init.d/whoopsie
+      - /etc/init.d/x11-common
+      # gdm (session persistence risk — specific files only)
+      - /etc/gdm3/Xsession
+      # other one-off executables
+      - /etc/X11/Xreset
+      - /etc/X11/Xsession
+      - /etc/apm/scripts.d/alsa
+      - /etc/cloud/clean.d/99-installer
+      - /etc/cloud/clean.d/99-installer-use-networkmanager
+      - /etc/console-setup/cached_setup_font.sh
+      - /etc/console-setup/cached_setup_keyboard.sh
+      - /etc/console-setup/cached_setup_terminal.sh
+      - /etc/nftables.conf
+      - /etc/openvpn/update-resolv-conf
+      - /etc/pm/sleep.d/10_unattended-upgrades-hibernate
+      - /etc/wpa_supplicant/action_wpa.sh
+      - /etc/wpa_supplicant/ifupdown.sh
+      # NetworkManager dispatcher
+      - /etc/NetworkManager/dispatcher.d/01-ifupdown
+      # cron dirs (additional standard jobs)
+      - /etc/cron.daily/bsdmainutils
+      - /etc/cron.daily/cracklib-runtime
+      - /etc/cron.daily/popularity-contest
+      - /etc/cron.daily/update-notifier-common
+      - /etc/cron.weekly/update-notifier-common
+      # update-motd.d (additional)
+      - /etc/update-motd.d/88-esm-announce
+      # init.d (additional standard scripts)
+      - /etc/init.d/acpid
+      - /etc/init.d/avahi-daemon
+      - /etc/init.d/cups-browsed
+      - /etc/init.d/grub-common
+      - /etc/init.d/hwclock.sh
+      - /etc/init.d/irqbalance
+      - /etc/init.d/kerneloops
+      - /etc/init.d/kmod
+      - /etc/init.d/network-manager
+      - /etc/init.d/pppd-dns
+      - /etc/init.d/pulseaudio-enable-autospawn
+      - /etc/init.d/udev
+      # gdm3 lifecycle hooks (full set)
+      - /etc/gdm3/Init/Default
+      - /etc/gdm3/PostLogin/Default.sample
+      - /etc/gdm3/PostSession/Default
+      - /etc/gdm3/PreSession/Default
+      - /etc/gdm3/Prime/Default
+      - /etc/gdm3/PrimeOff/Default
+      # X11 init scripts
+      - /etc/X11/xinit/xinitrc
+      - /etc/X11/xinit/xserverrc
+      # PM sleep hooks (additional)
+      - /etc/pm/sleep.d/10_grub-common
+
+  # baseline: standard IPv6 multicast address in /etc/hosts
+  - module: baseline
+    rule_id: "Non-loopback /etc/hosts entry"
+    message_contains: "fe00::0 ip6-localnet"
+    reason: "fe00::0 ip6-localnet is a standard IPv6 hosts entry present on all Ubuntu installs"
+
+  # persist: Ubuntu-specific .path units
+  - module: persistence
+    rule_id: "Systemd .path unit found"
+    message_contains: "apport-autoreport.path"
+    reason: "Ubuntu crash reporter trigger unit — ships with the apport package"
+
+  - module: persistence
+    rule_id: "Systemd .path unit found"
+    message_contains: "tpm-udev.path"
+    reason: "Standard Ubuntu TPM udev monitoring unit"
+
+  # persist: SPICE/VMware guest agent
+  - module: persistence
+    rule_id: "insmod/modprobe in persistence script"
+    path_in: [/etc/init.d/spice-vdagent]
+    reason: "spice-vdagent is the SPICE/VMware guest agent; modprobe uinput is required for virtual input device support"
+
+  # persist: Ubuntu kdump — two units, four ExecStart=/ExecStop= entries all point to same path
+  - module: persistence
+    rule_id: "Suspicious systemd exec path"
+    path_in: [/etc/init.d/kdump-tools]
+    reason: "kdump-tools init script is the standard Ubuntu kernel crash dump handler"
+
+  # persist: Ubuntu MOTD update service
+  - module: persistence
+    rule_id: "Suspicious systemd exec path"
+    path_in: [/etc/update-motd.d/50-motd-news]
+    reason: "motd-news.service ExecStart= points to standard Ubuntu MOTD script"
+
+  # persist: Ubuntu rc-local (analogous to RHEL /etc/rc.d/rc.local rule)
+  - module: persistence
+    rule_id: "Suspicious systemd exec path"
+    path_in: [/etc/rc.local]
+    reason: "rc-local.service ExecStart= points to /etc/rc.local — standard Ubuntu legacy init path"
+
+  # deepscan: brltty contraction table files are not scripts
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_glob: "/etc/brltty/**"
+    reason: "Braille TTY contraction/translation tables are data files, not scripts; word matches are coincidental"

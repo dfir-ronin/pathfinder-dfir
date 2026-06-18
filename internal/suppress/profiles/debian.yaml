@@ -1,0 +1,93 @@
+suppress:
+  # persist: rc-local.service (Debian legacy init path)
+  - module: persistence
+    rule_id: "Suspicious systemd exec path"
+    path_in: [/etc/rc.local]
+    reason: "rc-local.service ExecStart= points to /etc/rc.local — standard Debian legacy init path"
+
+  # deepscan: AppArmor profiles legitimately reference /dev/shm
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_glob: "/etc/apparmor.d/**"
+    reason: "AppArmor profiles legitimately reference /dev/shm for IPC policy"
+
+  # deepscan: system dictionary and hash
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in:
+      - /etc/dictionaries-common/words
+      - /etc/dictionaries-common/default.hash
+    reason: "System dictionary contains all English words including rootkit names; hash file mirrors same content"
+
+  # deepscan: /etc/alternatives symlinks — binary/man-page content triggers false positives
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in:
+      - /etc/alternatives/cpp
+      - /etc/alternatives/www-browser
+    reason: "Alternatives symlinks — binary/man-page content triggers false positives (netcat help, CGI env vars)"
+
+  # bodyfile: FHS violations — Debian-specific files (specific only, CTI-reviewed)
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_in:
+      # X11 session scripts
+      - /etc/X11/Xreset
+      - /etc/X11/Xsession
+      - /etc/X11/xinit/xinitrc
+      - /etc/X11/xinit/xserverrc
+      # console-setup
+      - /etc/console-setup/cached_setup_font.sh
+      - /etc/console-setup/cached_setup_keyboard.sh
+      - /etc/console-setup/cached_setup_terminal.sh
+      # cron dirs (T1053.003 risk — specific files only)
+      - /etc/cron.daily/0anacron
+      - /etc/cron.daily/apt-compat
+      - /etc/cron.daily/dpkg
+      - /etc/cron.daily/logrotate
+      - /etc/cron.daily/man-db
+      - /etc/cron.monthly/0anacron
+      - /etc/cron.weekly/0anacron
+      - /etc/cron.weekly/man-db
+      - /etc/cron.yearly/0anacron
+      # gdm3 session scripts (session persistence risk — specific files only)
+      - /etc/gdm3/Init/Default
+      - /etc/gdm3/PostLogin/Default.sample
+      - /etc/gdm3/PostSession/Default
+      - /etc/gdm3/PreSession/Default
+      - /etc/gdm3/Xsession
+      # init.d SysV scripts (T1037.004 risk — specific files only)
+      - /etc/init.d/alsa-utils
+      - /etc/init.d/anacron
+      - /etc/init.d/apparmor
+      - /etc/init.d/bluetooth
+      - /etc/init.d/console-setup.sh
+      - /etc/init.d/cron
+      - /etc/init.d/cups
+      - /etc/init.d/cups-browsed
+      - /etc/init.d/dbus
+      - /etc/init.d/gdm3
+      - /etc/init.d/keyboard-setup.sh
+      - /etc/init.d/networking
+      - /etc/init.d/plymouth
+      - /etc/init.d/plymouth-log
+      - /etc/init.d/procps
+      - /etc/init.d/saned
+      - /etc/init.d/speech-dispatcher
+      - /etc/init.d/sudo
+      - /etc/init.d/wtmpdb-update-boot
+      - /etc/init.d/x11-common
+      # firewall config
+      - /etc/nftables.conf
+      # update-motd.d (reverse shell risk — specific files only)
+      - /etc/update-motd.d/10-uname
+      - /etc/update-motd.d/85-fwupd
+      # wpa_supplicant hook scripts
+      - /etc/wpa_supplicant/action_wpa.sh
+      - /etc/wpa_supplicant/ifupdown.sh
+
+  # persistence: adduser.preinst -- | sha512sum matches | sh substring (detection bug workaround)
+  - module: persistence
+    rule_id: "Malicious DPKG lifecycle script"
+    message_contains: "/var/lib/dpkg/info/adduser.preinst"
+    reason: "adduser.preinst computes a config hash with '| sha512sum' which the pipe-to-shell check incorrectly matches as '| sh' -- standard Debian package script, not malicious"

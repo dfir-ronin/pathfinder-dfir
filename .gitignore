@@ -1,0 +1,14 @@
+# Build output
+/pathfinder
+/pathfinder-linux-amd64
+/pathfinder-linux-arm64
+
+# Test binaries
+*.test
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Environment
+.env

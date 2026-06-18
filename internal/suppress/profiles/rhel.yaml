@@ -1,0 +1,105 @@
+suppress:
+  # persist: additional systemd units
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "dbus.service"
+    reason: "D-Bus system bus unit symlink — standard on RHEL/Oracle"
+
+  # persist: eval in lang.sh
+  - module: persistence
+    rule_id: "Suspicious MotD/profile script command"
+    path_in: [/etc/profile.d/lang.sh]
+    reason: "RHEL/Oracle stock locale script — eval used for locale variable expansion"
+
+  # persist: rc-local.service ExecStart points to /etc/rc.d/rc.local (RHEL legacy init path)
+  - module: persistence
+    rule_id: "Suspicious systemd exec path"
+    path_in: [/etc/rc.d/rc.local]
+    reason: "/etc/rc.d/rc.local is the standard legacy init script path on RHEL/Oracle; rc-local.service is shipped by systemd to execute it"
+
+  # deepscan: SELinux policy files
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in:
+      - /etc/selinux/targeted/contexts/files/file_contexts
+      - /etc/selinux/targeted/contexts/files/file_contexts.bin
+    reason: "SELinux policy legitimately references /dev/shm, proxy tools in context definitions"
+
+  # deepscan: nc binary
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in: [/etc/alternatives/nc]
+    reason: "The nc binary contains its own help text describing listen mode — not malicious"
+
+  # users: crypto-policies sshd include
+  - module: users
+    rule_id: "Suspicious sshd_config directive"
+    message_contains: "crypto-policies"
+    reason: "RHEL/Oracle standard crypto policy backend for sshd"
+
+  # bodyfile: FHS violations — RHEL/Oracle-specific files (specific only, CTI-reviewed)
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_in:
+      # cron dirs (T1053.003 risk — specific files only)
+      - /etc/cron.hourly/0anacron
+      # profile.d (TeamTNT risk — specific files only; also suppressed by persist rule above for different rule_id)
+      - /etc/profile.d/lang.sh
+      # gdm (session persistence risk — specific files only)
+      - /etc/gdm/Init/Default
+      - /etc/gdm/PostLogin/Default.sample
+      - /etc/gdm/PostSession/Default
+      - /etc/gdm/PreSession/Default
+      # other one-off executables
+      - /etc/X11/xinit/xinitrc.d/50-systemd-user.sh
+      - /etc/dhcp/dhclient.d/chrony.sh
+      - /etc/qemu-ga/fsfreeze-hook
+      - /etc/smartmontools/smartd_warning.sh
+      - /etc/sysconfig/rasdaemon
+
+  # persistence: standard RHEL systemd generators
+  - module: persistence
+    rule_id: "Non-standard systemd generator"
+    message_contains: "kdump-dep-generator"
+    reason: "Standard RHEL kdump crash dump generator"
+
+  - module: persistence
+    rule_id: "Non-standard systemd generator"
+    message_contains: "podman-system-generator"
+    reason: "Podman container runtime generator — ships by default on RHEL"
+
+  - module: persistence
+    rule_id: "Non-standard systemd generator"
+    message_contains: "selinux-autorelabel-generator"
+    reason: "SELinux file system autorelabel generator — standard on RHEL"
+
+  # persistence: cockpit web console MOTD
+  - module: persistence
+    rule_id: "Recently added executable MOTD script"
+    path_in: [/etc/motd.d/cockpit]
+    reason: "Cockpit web console MOTD script — ships with the cockpit package on RHEL"
+
+  # volatile: mount namespaces -- RHEL-specific system daemons
+  - module: volatile
+    rule_id: "Process in non-host mount namespace"
+    process_in:
+      - dbus-broker
+      - dbus-broker-lau # dbus-broker-launch, truncated comm
+      - chronyd
+      - firewalld
+      - rsyslogd
+    reason: "RHEL-default daemons using systemd PrivateMounts isolation: dbus-broker (replaces dbus-daemon on RHEL), chronyd (time sync), firewalld, rsyslogd"
+
+  # volatile: UTS namespaces -- RHEL-specific system daemons
+  - module: volatile
+    rule_id: "Process in non-host uts namespace"
+    process_in:
+      - chronyd
+      - firewalld
+    reason: "RHEL-default daemons using systemd PrivateHostname isolation"
+
+  # bodyfile: Podman container state lock file
+  - module: bodyfile
+    rule_id: "Recent activity in volatile/hidden path"
+    path_in: [/dev/shm/libpod_lock]
+    reason: "Podman (libpod) uses this /dev/shm lock file for container state management -- ships by default on RHEL"
