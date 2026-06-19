@@ -4,6 +4,13 @@
 
 A single static binary for Linux live triage. No dependencies, no install — drop it on a host and run.
 
+  [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+  [![Go Report
+  Card](https://goreportcard.com/badge/github.com/dfir-ronin/pathfinder-dfir)](https://goreportcard.com/report/github.com/dfir-ronin/pathfinder-dfir)
+  [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
+
+
 ## What it does
 
 On a compromised Linux host, the binaries and the kernel can lie. A rootkit hides its own processes, filters out its modules, and patches the syscalls underneath you. Pathfinder reads the kernel directly and verifies what the host claims, so the lies surface instead of staying hidden. It isn't just a collector. It runs detection inline, so you walk away with answers, not just artifacts. As each module completes, it analyzes the host and prints a verdict right in the terminal, so by the time it finishes you have a prioritized, analyst-facing scorecard that tells you exactly what to chase down first, in the same terminal session.
