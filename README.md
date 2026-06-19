@@ -4,7 +4,7 @@
 
 A single static binary for Linux live triage. No dependencies, no install — drop it on a host and run.
 
-  [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+  [![Go](https://img.shields.io/github/go-mod/go-version/dfir-ronin/pathfinder-dfir?logo=go&logoColor=white&color=00ADD8)](https://go.dev/)
   [![Go Report
   Card](https://goreportcard.com/badge/github.com/dfir-ronin/pathfinder-dfir)](https://goreportcard.com/report/github.com/dfir-ronin/pathfinder-dfir)
   [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
