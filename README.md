@@ -53,6 +53,10 @@ sudo ./pathfinder-linux-amd64 -stealth
 
 Pathfinder is a triage companion, not a replacement for full forensic analysis. It's built to surface obvious indicators fast — the deep-dive is still on you.
 
+## Acknowledgments
+
+Parts of Pathfinder were built with assistance from [Claude Code](https://claude.com/claude-code), used for code review, refactoring, and documentation.
+
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
