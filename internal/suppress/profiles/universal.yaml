@@ -1,0 +1,685 @@
+suppress:
+  # volatile: kernel modules
+  - module: volatile
+    rule_id: "Hidden kernel module"
+    message_contains: "(built-in"
+    reason: "Built-in kernel modules appear in /sys/module but not /proc/modules by design"
+
+  # volatile: JIT memory regions
+  - module: volatile
+    rule_id: "Anonymous executable memory region"
+    process_in:
+      - firefox
+      - firefox-esr
+      - gnome-shell
+      - gnome-session-b
+      - gnome-terminal-
+      - gnome-text-edit
+      - gjs
+      - nautilus
+      - ptyxis
+      - mutter-x11-fram
+      - WebExtensions
+      - "Isolated Web Co"
+      - "Privileged Cont"
+      - "RDD Process"
+      - "Isolated Servic"
+      - "Web Content"
+      - "Utility Process"
+    reason: "JIT-compiled runtimes (SpiderMonkey, GJS) use anonymous executable mappings by design"
+
+  - module: volatile
+    rule_id: "RWX memory region"
+    process_in:
+      - firefox
+      - firefox-esr
+      - gnome-shell
+      - gnome-session-b
+      - gnome-terminal-
+      - gnome-text-edit
+      - gjs
+      - nautilus
+      - ptyxis
+      - WebExtensions
+      - "Isolated Web Co"
+      - "Privileged Cont"
+      - "Isolated Servic"
+      - "Web Content"
+    reason: "JIT runtimes require RWX mappings during code generation"
+
+  # volatile: Firefox snap/Flatpak LD_PRELOAD
+  - module: volatile
+    rule_id: "Suspicious process environment variable"
+    message_contains: "LD_PRELOAD"
+    process_in:
+      - "Socket Process"
+      - WebExtensions
+      - "RDD Process"
+      - "Privileged Cont"
+      - "Utility Process"
+      - "Isolated Servic"
+      - "Isolated Web Co"
+      - "Web Content"
+    reason: "Firefox multi-process children inherit LD_PRELOAD from snap/Flatpak loader — expected on desktop systems"
+
+  # volatile: network
+  - module: volatile
+    rule_id: "Established connection on non-standard port"
+    message_contains: ":68 →"
+    reason: "DHCP client (port 68 → 67) is standard NetworkManager behavior"
+
+  - module: volatile
+    rule_id: "Packet sniffer detected"
+    process_in: [NetworkManager]
+    reason: "NetworkManager uses raw sockets for ARP/DHCP — legitimate"
+
+  # volatile: network namespaces
+  - module: volatile
+    rule_id: "Process in non-host network namespace"
+    process_in:
+      - polkitd
+      - accounts-daemon
+      - rtkit-daemon
+      - irqbalance
+      - power-profiles-
+      - WebExtensions
+      - "RDD Process"
+      - "Privileged Cont"
+      - "Isolated Web Co"
+      - "Utility Process"
+      - "Isolated Servic"
+      - "Web Content"
+      - systemd-hostnam
+      - low-memory-moni # low-memory-monitor, truncated comm
+    reason: "Standard systemd sandboxing and Firefox process isolation"
+
+  # bodyfile: FHS violations — low-risk hook dirs (glob safe per CTI review)
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/grub.d/*"
+    reason: "GRUB hook directory — all contents are legitimately executable"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/network/if-*.d/*"
+    reason: "Network event hook directory — all contents are legitimately executable"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/kernel/postinst.d/*"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/kernel/postrm.d/*"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/kernel/preinst.d/*"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/ppp/**"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/xdg/Xwayland-session.d/*"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/vmware-tools/**"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/mcelog/triggers/*"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/acpi/*.sh"
+    reason: "ACPI event handler scripts — called by acpid for power management events"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/avahi/avahi-autoipd.action"
+    reason: "avahi-autoipd action script — called when IPv4LL address is acquired or lost"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/dhcp/dhclient-enter-hooks.d/*"
+    reason: "DHCP client enter-hook directory — all contents run before dhclient processes a lease"
+
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_glob: "/etc/dhcp/dhclient-exit-hooks.d/*"
+    reason: "DHCP client exit-hook directory — all contents run after dhclient processes a lease"
+
+  # bodyfile: FHS violations — specific files only (dirs with active CTI abuse)
+  - module: bodyfile
+    rule_id: "FHS violation: executable in non-exec directory"
+    path_in:
+      - /etc/brltty/Contraction/latex-access.ctb
+      - /etc/security/namespace.init
+
+  # bodyfile: Firefox profile directory in user home
+  - module: bodyfile
+    rule_id: "Recent activity in volatile/hidden path"
+    path_glob: "/home/*/.mozilla/**"
+    reason: "Firefox profile data under ~/.mozilla/ is expected user activity"
+
+  # persistence: CUPS printing .path unit
+  - module: persistence
+    rule_id: "Systemd .path unit found"
+    message_contains: "cups.path"
+    reason: "cups.path is the standard CUPS print-spooler trigger unit — ships with the cups package"
+
+  # persistence: wpa_supplicant D-Bus alias (standard on any systemd distro)
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "dbus-fi."
+    reason: "dbus-fi.w1.wpa_supplicant1.service is a standard D-Bus alias created by wpa_supplicant"
+
+  # deepscan: SSH host key
+  - module: deepscan
+    rule_id: "Suspicious string match in config/script"
+    path_in:
+      - /etc/ssh/ssh_host_rsa_key
+      - /etc/ssh/ssh_host_rsa_key.pub
+    reason: "SH006 matches the host's own SSH key — not embedded maliciously"
+
+  # audit: systemd-executor comm mismatch
+  - module: audit
+    rule_id: "Process binary mismatch"
+    message_contains: "systemd-executor"
+    reason: "systemd uses a single executor binary that reports different comm names per unit"
+
+  # persistence: dbus-org.* and display-manager symlinks
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "dbus-org."
+    reason: "dbus-org.* units are standard D-Bus alias symlinks created by systemd"
+
+  - module: persistence
+    rule_id: "Non-standard systemd unit"
+    message_contains: "display-manager.service"
+    reason: "Symlink to the active display manager (gdm/lightdm) — standard"
+
+  # volatile: gnome-session-ibus JIT memory (15-char comm truncation of gnome-session-ibus)
+  - module: volatile
+    rule_id: "Anonymous executable memory region"
+    process_in: [gnome-session-i]
+    reason: "gnome-session-ibus (comm truncated to gnome-session-i) uses anonymous exec mappings for JIT dispatch — same rationale as gnome-session-b"
+
+  - module: volatile
+    rule_id: "RWX memory region"
+    process_in: [gnome-session-i]
+    reason: "Same JIT rationale as gnome-session-b"
+
+  # volatile: memory maps — known execUserHome false positives
+  - module: volatile
+    rule_id: "Suspicious memory map"
+    process_in:
+      - steam
+      - steamwebhelper
+      - pressure-vessel
+    reason: "Steam loads .so files from ~/.local/share/Steam/ by design"
+
+  - module: volatile
+    rule_id: "Suspicious memory map"
+    process_in:
+      - gnome-shell
+      - gjs
+    reason: "GNOME Shell extensions load from ~/.local/share/gnome-shell/extensions/ by design"
+
+  # volatile: Flatpak/GNOME sandbox network namespaces
+  - module: volatile
+    rule_id: "Process in non-host network namespace"
+    process_in:
+      - bwrap
+      - glycin-image-rs
+      - glycin-svg
+      - systemd-localed
+    reason: "Flatpak/GNOME sandbox isolation (bwrap, glycin); systemd-localed uses its own netns by design"
+
+  # volatile: GNOME desktop session — all user-session processes share a non-host network namespace
+  - module: volatile
+    rule_id: "Process in non-host network namespace"
+    process_in:
+      # session core
+      - dbus-daemon
+      - pipewire
+      - pipewire-pulse
+      - wireplumber
+      - mpris-proxy
+      - gnome-keyring-d
+      - gcr-ssh-agent
+      - gnome-session-b
+      - gnome-session-c
+      - gnome-session-s
+      - gnome-session-i
+      - gdm-wayland-ses
+      # shell / compositor
+      - gnome-shell
+      - gnome-shell-cal
+      - gjs
+      - mutter-x11-fram
+      - Xwayland
+      # filesystem / portals
+      - gvfsd
+      - gvfsd-fuse
+      - gvfsd-trash
+      - gvfsd-recent
+      - gvfsd-network
+      - gvfsd-dnssd
+      - gvfsd-wsdd
+      - gvfsd-metadata
+      - gvfs-udisks2-vo
+      - gvfs-gphoto2-vo
+      - gvfs-goa-volume
+      - gvfs-afc-volume
+      - gvfs-mtp-volume
+      - xdg-desktop-por
+      - xdg-document-po
+      - xdg-permission-
+      - dconf-service
+      # accessibility
+      - at-spi-bus-laun
+      - at-spi2-registr
+      # IBus input method
+      - ibus-daemon
+      - ibus-dconf
+      - ibus-extension-
+      - ibus-portal
+      - ibus-engine-sim
+      - ibus-x11
+      # GSD settings daemons
+      - gsd-a11y-settin
+      - gsd-color
+      - gsd-datetime
+      - gsd-housekeepin
+      - gsd-keyboard
+      - gsd-media-keys
+      - gsd-power
+      - gsd-print-notif
+      - gsd-rfkill
+      - gsd-screensaver
+      - gsd-sharing
+      - gsd-smartcard
+      - gsd-sound
+      - gsd-usb-protect
+      - gsd-wwan
+      - gsd-disk-utilit
+      - gsd-printer
+      - gsd-wacom
+      - gsd-xsettings
+      # GNOME Online Accounts / Evolution PIM
+      - goa-daemon
+      - goa-identity-se
+      - evolution-alarm
+      - evolution-sourc
+      - evolution-calen
+      - evolution-addre
+      # other GNOME apps / services
+      - gnome-software
+      - gnome-control-c
+      - update-notifier
+      - localsearch-3
+      - localsearch-ext
+      - nautilus
+      - ptyxis
+      - ptyxis-agent
+      - snapd-desktop-i
+      - snap
+      # Firefox multi-process children
+      - firefox
+      - firefox-esr
+      - crashhelper
+      - forkserver
+      - "Socket Process"
+    reason: "Standard GNOME desktop session processes run in the user-session network namespace by design"
+
+  # volatile: mount namespaces -- systemd sandboxing (PrivateMounts=yes, PrivateDevices=yes)
+  - module: volatile
+    rule_id: "Process in non-host mount namespace"
+    process_in:
+      - polkitd
+      - accounts-daemon
+      - rtkit-daemon
+      - irqbalance
+      - power-profiles-
+      - WebExtensions
+      - "RDD Process"
+      - "Privileged Cont"
+      - "Isolated Web Co"
+      - "Utility Process"
+      - "Isolated Servic"
+      - "Web Content"
+      - systemd-hostnam
+    reason: "Standard systemd sandboxing (PrivateMounts/PrivateDevices) and Firefox process isolation"
+
+  # volatile: mount namespaces -- Flatpak/GNOME sandbox
+  - module: volatile
+    rule_id: "Process in non-host mount namespace"
+    process_in:
+      - bwrap
+      - glycin-image-rs
+      - glycin-svg
+      - systemd-localed
+    reason: "Flatpak/GNOME sandbox isolation (bwrap, glycin); systemd-localed uses private mounts by design"
+
+  # volatile: GNOME desktop session -- mount namespaces
+  - module: volatile
+    rule_id: "Process in non-host mount namespace"
+    process_in:
+      # session core
+      - dbus-daemon
+      - pipewire
+      - pipewire-pulse
+      - wireplumber
+      - mpris-proxy
+      - gnome-keyring-d
+      - gcr-ssh-agent
+      - gnome-session-b
+      - gnome-session-c
+      - gnome-session-s
+      - gnome-session-i
+      - gdm-wayland-ses
+      # shell / compositor
+      - gnome-shell
+      - gnome-shell-cal
+      - gjs
+      - mutter-x11-fram
+      - Xwayland
+      # filesystem / portals
+      - gvfsd
+      - gvfsd-fuse
+      - gvfsd-trash
+      - gvfsd-recent
+      - gvfsd-network
+      - gvfsd-dnssd
+      - gvfsd-wsdd
+      - gvfsd-metadata
+      - gvfs-udisks2-vo
+      - gvfs-gphoto2-vo
+      - gvfs-goa-volume
+      - gvfs-afc-volume
+      - gvfs-mtp-volume
+      - xdg-desktop-por
+      - xdg-document-po
+      - xdg-permission-
+      - dconf-service
+      # accessibility
+      - at-spi-bus-laun
+      - at-spi2-registr
+      # IBus input method
+      - ibus-daemon
+      - ibus-dconf
+      - ibus-extension-
+      - ibus-portal
+      - ibus-engine-sim
+      - ibus-x11
+      # GSD settings daemons
+      - gsd-a11y-settin
+      - gsd-color
+      - gsd-datetime
+      - gsd-housekeepin
+      - gsd-keyboard
+      - gsd-media-keys
+      - gsd-power
+      - gsd-print-notif
+      - gsd-rfkill
+      - gsd-screensaver
+      - gsd-sharing
+      - gsd-smartcard
+      - gsd-sound
+      - gsd-usb-protect
+      - gsd-wwan
+      - gsd-disk-utilit
+      - gsd-printer
+      - gsd-wacom
+      - gsd-xsettings
+      # GNOME Online Accounts / Evolution PIM
+      - goa-daemon
+      - goa-identity-se
+      - evolution-alarm
+      - evolution-sourc
+      - evolution-calen
+      - evolution-addre
+      # other GNOME apps / services
+      - gnome-software
+      - gnome-control-c
+      - update-notifier
+      - localsearch-3
+      - localsearch-ext
+      - nautilus
+      - ptyxis
+      - ptyxis-agent
+      - snapd-desktop-i
+      - snap
+      # Firefox multi-process children
+      - firefox
+      - firefox-esr
+      - crashhelper
+      - forkserver
+      - "Socket Process"
+    reason: "Standard GNOME desktop session processes use private mount namespaces via systemd unit sandboxing"
+
+  # volatile: mount namespaces -- additional standard systemd system daemons
+  - module: volatile
+    rule_id: "Process in non-host mount namespace"
+    process_in:
+      - kdevtmpfs
+      - systemd-timesyn # systemd-timesyncd, truncated comm
+      - systemd-udevd
+      - systemd-logind
+      - switcheroo-cont # switcheroo-control, truncated comm
+      - NetworkManager
+      - ModemManager
+      - upowerd
+      - colord
+      - low-memory-moni # low-memory-monitor, truncated comm
+      - systemd-userdbd
+      - systemd-userwor # systemd-userwork, truncated comm
+      - fwupd
+    reason: "Standard systemd PrivateMounts/PrivateDevices isolation for well-known system daemons"
+
+  # volatile: UTS namespaces -- container runtimes and systemd PrivateHostname
+  - module: volatile
+    rule_id: "Process in non-host uts namespace"
+    process_in:
+      - bwrap
+      - runc
+      - containerd
+      - dockerd
+      - podman
+      - lxc-start
+      - systemd-nspawn
+    reason: "Container runtimes and namespace-aware sandbox tools legitimately use private UTS namespaces"
+
+  # volatile: UTS namespaces -- standard systemd system daemons (PrivateHostname=yes)
+  - module: volatile
+    rule_id: "Process in non-host uts namespace"
+    process_in:
+      - polkitd
+      - accounts-daemon
+      - rtkit-daemon
+      - irqbalance
+      - power-profiles- # power-profiles-daemon, truncated comm
+      - systemd-timesyn # systemd-timesyncd, truncated comm
+      - systemd-udevd
+      - systemd-logind
+      - colord
+      - switcheroo-cont # switcheroo-control, truncated comm
+      - systemd-userdbd
+      - systemd-userwor # systemd-userwork, truncated comm
+    reason: "Standard systemd PrivateHostname=yes isolation for well-known system daemons"
+
+  # audit: udevadm forks udev-worker via prctl
+  - module: audit
+    rule_id: "Process binary mismatch"
+    message_contains: "udev-worker"
+    reason: "udevadm forks worker processes that rename themselves to udev-worker via prctl(PR_SET_NAME) — standard udev behavior"
+
+  # audit: systemd-udevd comm / udevadm exe mismatch (systemd >= v249)
+  - module: audit
+    rule_id: "Process binary mismatch"
+    message_contains: "systemd-udevd"
+    reason: "On systemd >= v249 udevd is merged into udevadm; the process retains the systemd-udevd comm but the real binary is /usr/bin/udevadm"
+
+  # persistence: DKMS kernel modules (out-of-tree taint is expected)
+  - module: persistence
+    rule_id: "Out-of-tree or unsigned kernel module"
+    message_contains: "nvidia"
+    reason: "Nvidia proprietary driver is always out-of-tree signed — expected taint"
+
+  - module: persistence
+    rule_id: "Out-of-tree or unsigned kernel module"
+    message_contains: "vbox"
+    reason: "VirtualBox kernel modules are out-of-tree — expected on virtualized hosts"
+
+  - module: persistence
+    rule_id: "Out-of-tree or unsigned kernel module"
+    message_contains: "vmw"
+    reason: "VMware kernel modules are out-of-tree — expected on VMware guests"
+
+  # persistence: known package-manager and infrastructure domains
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "0pointer.de"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "canonical.com"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "cistron.nl"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "debian.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "dell.com"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "hughsie.com"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "inittab.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "lists.debian.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "mars.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "mit.edu"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "oops.kernel.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "rcm.org.br"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "systemd.io"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "teamix.net"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "ubuntu.com"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "wunder-nett.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "www.gnu.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "www.rsyslog.com"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  - module: persistence
+    rule_id: "External domain in persistence mechanism"
+    message_contains: "www.freedesktop.org"
+    reason: "Known package-manager or infrastructure domain appearing in dpkg lifecycle scripts — not a C2 indicator."
+
+  # volatile: pathfinder SUDO_USER self-detection
+  - module: volatile
+    rule_id: "Suspicious process environment variable"
+    message_contains: "SUDO_USER"
+    process_in: ["pathfinder", "pathfinder_v-"]
+    reason: "Pathfinder inherits SUDO_USER when invoked via sudo — expected self-artifact"
+
+  # bodyfile: X11 display lock files
+  - module: bodyfile
+    rule_id: "Recent activity in volatile/hidden path"
+    path_glob: "/tmp/.X*-lock"
+    reason: "X11 server display lock files — standard when X server is running"
+
+  # volatile: process CWD in /proc -- Firefox sandbox IPC
+  - module: volatile
+    rule_id: "Process CWD in staging directory"
+    message_contains: "CWD=/proc/"
+    process_in:
+      - "Socket Process"
+      - "Privileged Cont"
+      - "RDD Process"
+      - WebExtensions
+      - "Utility Process"
+      - "Isolated Servic"
+      - "Isolated Web Co"
+      - "Web Content"
+    reason: "Firefox subprocesses fchdir() into /proc/<sibling>/fdinfo for sandbox IPC file descriptor passing"
+
+  # volatile: process CWD in /proc -- rtkit-daemon
+  - module: volatile
+    rule_id: "Process CWD in staging directory"
+    message_contains: "CWD=/proc"
+    process_in: [rtkit-daemon]
+    reason: "rtkit-daemon keeps CWD=/proc to read RT scheduling priorities from procfs -- expected behavior"
+
+  # bodyfile: LTTng userspace tracer IPC semaphores in /dev/shm
+  - module: bodyfile
+    rule_id: "Recent activity in volatile/hidden path"
+    path_glob: "/dev/shm/lttng-ust-wait-*"
+    reason: "LTTng userspace tracer creates POSIX semaphores in /dev/shm for IPC; present on any system with liblttng-ust-linked applications"
+
+  # bodyfile: Firefox profile data files with execute bit
+  - module: bodyfile
+    rule_id: "Executable in volatile/hidden path"
+    path_glob: "/home/*/.mozilla/firefox/**"
+    reason: "Firefox profile data files (e.g. times.json) occasionally inherit execute bits via permissive umask -- consistent with the existing Recent activity suppression for .mozilla/"
+
